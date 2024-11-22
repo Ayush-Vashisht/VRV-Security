@@ -28,8 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { api, User } from '@/lib/api'
+import { api } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
+import { User } from '@/lib/utils'
 
 export default function UserManagement({ searchQuery, activeFilter }: { searchQuery: string, activeFilter: string }) {
   const [users, setUsers] = useState<User[]>([])
