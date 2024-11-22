@@ -30,6 +30,11 @@ const initialRoles = [
 
 const allPermissions = ["Read", "Write", "Delete"];
 
+interface Role{
+  name:string;
+  permissions:string[]
+}
+
 export default function RoleManagement({
   searchQuery,
   activeFilter,
@@ -38,7 +43,7 @@ export default function RoleManagement({
   activeFilter: string;
 }) {
   const [roles, setRoles] = useState(initialRoles);
-  const [newRole, setNewRole] = useState({ name: "", permissions: [] });
+  const [newRole, setNewRole] = useState<Role>({ name: "", permissions: [] });
   const [isAddingRole, setIsAddingRole] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
