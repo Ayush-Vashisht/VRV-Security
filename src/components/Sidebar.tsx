@@ -34,7 +34,7 @@ export function Sidebar({
             animate={{ opacity: isSidebarOpen ? 1 : 0 }}
             className="text-2xl font-bold text-white"
           >
-            RBAC Admin
+            Dashboard
           </motion.h1>
         )}
         {~isSidebarOpen && (
