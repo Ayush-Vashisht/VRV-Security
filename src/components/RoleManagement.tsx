@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Edit, Trash2, Check } from "lucide-react";
+import { Plus, Edit, Trash2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,19 +21,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-
-const initialRoles = [
-  { id: 1, name: "Admin", permissions: ["Read", "Write", "Delete"] },
-  { id: 2, name: "Editor", permissions: ["Read", "Write"] },
-  { id: 3, name: "Viewer", permissions: ["Read"] },
-];
+import { api, Role } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const allPermissions = ["Read", "Write", "Delete"];
-
-interface Role{
-  name:string;
-  permissions:string[]
-}
 
 export default function RoleManagement({
   searchQuery,
@@ -42,31 +33,95 @@ export default function RoleManagement({
   searchQuery: string;
   activeFilter: string;
 }) {
-  const [roles, setRoles] = useState(initialRoles);
-  const [newRole, setNewRole] = useState<Role>({ name: "", permissions: [] });
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [newRole, setNewRole] = useState<Omit<Role, "id">>({
+    name: "",
+    permissions: [],
+  });
   const [isAddingRole, setIsAddingRole] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  const filteredRoles = useMemo(() => {
-    return roles.filter(
-      (role) =>
-        role.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        (activeFilter === "All" ||
-          (activeFilter === "With Delete" &&
-            role.permissions.includes("Delete")) ||
-          (activeFilter === "Without Delete" &&
-            !role.permissions.includes("Delete")))
-    );
-  }, [roles, searchQuery, activeFilter]);
+  useEffect(() => {
+    fetchRoles();
+  }, []);
 
-  const handleAddRole = () => {
-    setRoles([...roles, { id: roles.length + 1, ...newRole }]);
-    setNewRole({ name: "", permissions: [] });
-    setIsAddingRole(false);
+  const fetchRoles = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedRoles = await api.roles.getAll();
+      setRoles(fetchedRoles);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch roles",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteRole = (id: number) => {
-    setRoles(roles.filter((role) => role.id !== id));
+  const handleAddRole = async () => {
+    try {
+      const createdRole = await api.roles.create(newRole);
+      setRoles([...roles, createdRole]);
+      setNewRole({ name: "", permissions: [] });
+      setIsAddingRole(false);
+      toast({
+        title: "Success",
+        description: "Role added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRole = async (id: number) => {
+    try {
+      await api.roles.delete(id);
+      setRoles(roles.filter((role) => role.id !== id));
+      toast({
+        title: "Success",
+        description: "Role deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (id: number) => {
+    setEditingId(id);
+  };
+
+  const handleSave = async (id: number) => {
+    const roleToUpdate = roles.find((role) => role.id === id);
+    if (!roleToUpdate) return;
+
+    try {
+      const updatedRole = await api.roles.update(id, roleToUpdate);
+      setRoles(roles.map((role) => (role.id === id ? updatedRole : role)));
+      setEditingId(null);
+      toast({
+        title: "Success",
+        description: "Role updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update role",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePermissionChange = (permission: string) => {
@@ -76,15 +131,6 @@ export default function RoleManagement({
         ? prev.permissions.filter((p) => p !== permission)
         : [...prev.permissions, permission],
     }));
-  };
-
-  const handleEdit = (id: number) => {
-    setEditingId(id);
-  };
-
-  const handleSave = (id: number) => {
-    setEditingId(null);
-    // Here you would typically update the role data
   };
 
   const handlePermissionToggle = (roleId: number, permission: string) => {
@@ -100,6 +146,24 @@ export default function RoleManagement({
       })
     );
   };
+
+  const filteredRoles = roles.filter(
+    (role) =>
+      role.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (activeFilter === "All" ||
+        (activeFilter === "With Delete" &&
+          role.permissions.includes("Delete")) ||
+        (activeFilter === "Without Delete" &&
+          !role.permissions.includes("Delete")))
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -200,9 +264,11 @@ export default function RoleManagement({
                           onCheckedChange={() =>
                             handlePermissionToggle(role.id, permission)
                           }
-                          
                         />
-                        <label htmlFor={`permission-${role.id}-${permission}`}>
+                        <label
+                          htmlFor={`permission-${role.id}-${permission}`}
+                          className="text-white"
+                        >
                           {permission}
                         </label>
                       </div>
@@ -229,14 +295,13 @@ export default function RoleManagement({
                   </div>
                 )}
               </TableCell>
-
               <TableCell>
                 {editingId === role.id ? (
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleSave(role.id)}
-                    className="text-gray-300 hover:text-white hover:bg-gray-500"
+                    className="text-gray-300 hover:text-white"
                   >
                     <Check className="h-4 w-4" />
                   </Button>

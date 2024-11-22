@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Plus, Edit, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Plus, Edit, Trash2, Check, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -12,253 +12,127 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { api, User } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-}
+export default function UserManagement({ searchQuery, activeFilter }: { searchQuery: string, activeFilter: string }) {
+  const [users, setUsers] = useState<User[]>([])
+  const [newUser, setNewUser] = useState<Omit<User, 'id'>>({ name: '', email: '', role: '', status: 'Active' })
+  const [isAddingUser, setIsAddingUser] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
-const initialUsers: User[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Admin",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "Editor",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    role: "Viewer",
-    status: "Inactive",
-  },
-];
+  useEffect(() => {
+    fetchUsers()
+  }, [])
 
-function AddUserDialog({
-  isOpen,
-  onClose,
-  onAddUser,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddUser: (user: Omit<User, "id">) => void;
-}) {
-  const [newUser, setNewUser] = useState<Omit<User, "id">>({
-    name: "",
-    email: "",
-    role: "",
-    status: "",
-  });
+  const fetchUsers = async () => {
+    setIsLoading(true)
+    try {
+      const fetchedUsers = await api.users.getAll()
+      setUsers(fetchedUsers)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-  const handleAddUser = () => {
-    onAddUser(newUser);
-    setNewUser({ name: "", email: "", role: "", status: "" });
-    onClose();
-  };
+  const handleAddUser = async () => {
+    try {
+      const createdUser = await api.users.create(newUser)
+      setUsers([...users, createdUser])
+      setNewUser({ name: '', email: '', role: '', status: 'Active' })
+      setIsAddingUser(false)
+      toast({
+        title: "Success",
+        description: "User added successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add user",
+        variant: "destructive",
+      })
+    }
+  }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-800 text-white">
-        <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <Input
-            placeholder="Name"
-            value={newUser.name}
-            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-            className="bg-gray-700 text-white border-gray-600"
-          />
-          <Input
-            placeholder="Email"
-            value={newUser.email}
-            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-            className="bg-gray-700 text-white border-gray-600"
-          />
-          <Select
-            value={newUser.role}
-            onValueChange={(value) => setNewUser({ ...newUser, role: value })}
-          >
-            <SelectTrigger className="bg-gray-700 text-white border-gray-600">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Admin">Admin</SelectItem>
-              <SelectItem value="Editor">Editor</SelectItem>
-              <SelectItem value="Viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={newUser.status}
-            onValueChange={(value) => setNewUser({ ...newUser, status: value })}
-          >
-            <SelectTrigger className="bg-gray-700 text-white border-gray-600">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          onClick={handleAddUser}
-          className="bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Add User
-        </Button>
-      </DialogContent>
-    </Dialog>
-  );
-}
+  const handleDeleteUser = async (id: number) => {
+    try {
+      await api.users.delete(id)
+      setUsers(users.filter(user => user.id !== id))
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      })
+    }
+  }
 
-function EditUserDialog({
-  isOpen,
-  onClose,
-  user,
-  onEditUser,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  user: User;
-  onEditUser: (id: number, updatedUser: Omit<User, "id">) => void;
-}) {
-  const [editedUser, setEditedUser] = useState<Omit<User, "id">>({
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    status: user.status,
-  });
+  const handleEdit = (id: number) => {
+    setEditingId(id)
+  }
 
-  const handleEditUser = () => {
-    onEditUser(user.id, editedUser);
-    onClose();
-  };
+  const handleSave = async (id: number) => {
+    const userToUpdate = users.find(user => user.id === id)
+    if (!userToUpdate) return
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-800 text-white">
-        <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <Input
-            placeholder="Name"
-            value={editedUser.name}
-            onChange={(e) =>
-              setEditedUser({ ...editedUser, name: e.target.value })
-            }
-            className="bg-gray-700 text-white border-gray-600"
-          />
-          <Input
-            placeholder="Email"
-            value={editedUser.email}
-            onChange={(e) =>
-              setEditedUser({ ...editedUser, email: e.target.value })
-            }
-            className="bg-gray-700 text-white border-gray-600"
-          />
-          <Select
-            value={editedUser.role}
-            onValueChange={(value) =>
-              setEditedUser({ ...editedUser, role: value })
-            }
-          >
-            <SelectTrigger className="bg-gray-700 text-white border-gray-600">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Admin">Admin</SelectItem>
-              <SelectItem value="Editor">Editor</SelectItem>
-              <SelectItem value="Viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={editedUser.status}
-            onValueChange={(value) =>
-              setEditedUser({ ...editedUser, status: value })
-            }
-          >
-            <SelectTrigger className="bg-gray-700 text-white border-gray-600">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          onClick={handleEditUser}
-          className="bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Save Changes
-        </Button>
-      </DialogContent>
-    </Dialog>
-  );
-}
+    try {
+      const updatedUser = await api.users.update(id, userToUpdate)
+      setUsers(users.map(user => user.id === id ? updatedUser : user))
+      setEditingId(null)
+      toast({
+        title: "Success",
+        description: "User updated successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      })
+    }
+  }
 
-export default function UserManagement({
-  searchQuery,
-  activeFilter,
-}: {
-  searchQuery: string;
-  activeFilter: string;
-}) {
-  const [users, setUsers] = useState<User[]>(initialUsers);
-  const [isAddingUser, setIsAddingUser] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const filteredUsers = users.filter(user => 
+    (user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     user.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
+    (activeFilter === 'All' || user.role === activeFilter)
+  )
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(
-      (user) =>
-        (user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        (activeFilter === "All" || user.role === activeFilter)
-    );
-  }, [users, searchQuery, activeFilter]);
-
-  const handleAddUser = (newUser: Omit<User, "id">) => {
-    setUsers([...users, { id: users.length + 1, ...newUser }]);
-  };
-
-  const handleEditUser = (id: number, updatedUser: Omit<User, "id">) => {
-    setUsers(
-      users.map((user) => (user.id === id ? { ...user, ...updatedUser } : user))
-    );
-  };
-
-  const handleDeleteUser = (id: number) => {
-    setUsers(users.filter((user) => user.id !== id));
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -268,13 +142,58 @@ export default function UserManagement({
       className="space-y-4"
     >
       <div className="flex justify-end">
-        <Button
-          variant="outline"
-          className="bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
-          onClick={() => setIsAddingUser(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" /> Add User
-        </Button>
+        <Dialog open={isAddingUser} onOpenChange={setIsAddingUser}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="bg-gray-700 text-white border-gray-600 hover:bg-gray-600">
+              <Plus className="mr-2 h-4 w-4" /> Add User
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-gray-800 text-white">
+            <DialogHeader>
+              <DialogTitle>Add New User</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Input
+                placeholder="Name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                className="bg-gray-700 text-white border-gray-600"
+              />
+              <Input
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="bg-gray-700 text-white border-gray-600"
+              />
+              <Select
+                value={newUser.role}
+                onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+              >
+                <SelectTrigger className="bg-gray-700 text-white border-gray-600">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Editor">Editor</SelectItem>
+                  <SelectItem value="Viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={newUser.status}
+                onValueChange={(value) => setNewUser({ ...newUser, status: value as 'Active' | 'Inactive' })}
+              >
+                <SelectTrigger className="bg-gray-700 text-white border-gray-600">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleAddUser} className="bg-blue-600 text-white hover:bg-blue-700">Add User</Button>
+          </DialogContent>
+        </Dialog>
       </div>
       <Table>
         <TableHeader>
@@ -289,31 +208,98 @@ export default function UserManagement({
         <TableBody>
           {filteredUsers.map((user) => (
             <TableRow key={user.id} className="border-gray-700">
-              <TableCell className="font-medium">{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.role}</TableCell>
-              <TableCell>
-                <Badge
-                  variant={user.status === "Active" ? "success" : "destructive"}
-                >
-                  {user.status}
-                </Badge>
+              <TableCell className="font-medium">
+                {editingId === user.id ? (
+                  <Input
+                    value={user.name}
+                    onChange={(e) => {
+                      const updatedUsers = users.map(u => 
+                        u.id === user.id ? { ...u, name: e.target.value } : u
+                      );
+                      setUsers(updatedUsers);
+                    }}
+                    className="bg-gray-700 text-white border-gray-600"
+                  />
+                ) : (
+                  user.name
+                )}
               </TableCell>
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-gray-300 hover:text-white hover:bg-gray-500"
-                  onClick={() => setEditingUser(user)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteUser(user.id)}
-                  className="text-gray-300 hover:text-white hover:bg-red-500"
-                >
+                {editingId === user.id ? (
+                  <Input
+                    value={user.email}
+                    onChange={(e) => {
+                      const updatedUsers = users.map(u => 
+                        u.id === user.id ? { ...u, email: e.target.value } : u
+                      );
+                      setUsers(updatedUsers);
+                    }}
+                    className="bg-gray-700 text-white border-gray-600"
+                  />
+                ) : (
+                  user.email
+                )}
+              </TableCell>
+              <TableCell>
+                {editingId === user.id ? (
+                  <Select
+                    value={user.role}
+                    onValueChange={(value) => {
+                      const updatedUsers = users.map(u => 
+                        u.id === user.id ? { ...u, role: value } : u
+                      );
+                      setUsers(updatedUsers);
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-700 text-white border-gray-600">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Editor">Editor</SelectItem>
+                      <SelectItem value="Viewer">Viewer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  user.role
+                )}
+              </TableCell>
+              <TableCell>
+                {editingId === user.id ? (
+                  <Select
+                    value={user.status}
+                    onValueChange={(value) => {
+                      const updatedUsers = users.map(u => 
+                        u.id === user.id ? { ...u, status: value as 'Active' | 'Inactive' } : u
+                      );
+                      setUsers(updatedUsers);
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-700 text-white border-gray-600">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge variant={user.status === 'Active' ? 'success' : 'destructive'}>
+                    {user.status}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {editingId === user.id ? (
+                  <Button variant="ghost" size="icon" onClick={() => handleSave(user.id)} className="text-gray-300 hover:text-white">
+                    <Check className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(user.id)} className="text-gray-300 hover:text-white hover:bg-gray-500">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-gray-300 hover:text-white hover:bg-red-500">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -321,19 +307,7 @@ export default function UserManagement({
           ))}
         </TableBody>
       </Table>
-      <AddUserDialog
-        isOpen={isAddingUser}
-        onClose={() => setIsAddingUser(false)}
-        onAddUser={handleAddUser}
-      />
-      {editingUser && (
-        <EditUserDialog
-          isOpen={true}
-          onClose={() => setEditingUser(null)}
-          user={editingUser}
-          onEditUser={handleEditUser}
-        />
-      )}
     </motion.div>
-  );
+  )
 }
+
