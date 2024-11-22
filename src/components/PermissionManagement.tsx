@@ -20,12 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-const initialPermissions = [
-  { id: 1, name: "Read", description: "Ability to view resources" },
-  { id: 2, name: "Write", description: "Ability to create and edit resources" },
-  { id: 3, name: "Delete", description: "Ability to remove resources" },
-];
+import { initialPermissions } from "@/lib/utils";
 
 export default function PermissionManagement({
   searchQuery,
@@ -61,7 +56,6 @@ export default function PermissionManagement({
 
   const handleSave = (id: number) => {
     setEditingId(null);
-    // Here you would typically update the permission data
   };
 
   const filteredPermissions = useMemo(() => {
@@ -82,7 +76,10 @@ export default function PermissionManagement({
         <h2 className="text-3xl font-bold">Permission Management</h2>
         <Dialog open={isAddingPermission} onOpenChange={setIsAddingPermission}>
           <DialogTrigger asChild>
-            <Button>
+            <Button
+              variant="outline"
+              className="bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
+            >
               <Plus className="mr-2 h-4 w-4" /> Add Permission
             </Button>
           </DialogTrigger>

@@ -21,8 +21,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { api, Role } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { Role } from "@/lib/utils";
 
 const allPermissions = ["Read", "Write", "Delete"];
 

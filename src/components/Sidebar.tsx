@@ -3,14 +3,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Users, ShieldCheck, Key, Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, menuItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const menuItems = [
-  { id: "users", label: "Users", icon: Users },
-  { id: "roles", label: "Roles", icon: ShieldCheck },
-  { id: "permissions", label: "Permissions", icon: Key },
-];
 
 export function Sidebar({
   activeTab,

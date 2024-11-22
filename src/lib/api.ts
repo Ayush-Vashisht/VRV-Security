@@ -1,18 +1,6 @@
+import { Role, User } from "./utils";
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  status: "Active" | "Inactive";
-}
-
-export interface Role {
-  id: number;
-  name: string;
-  permissions: string[];
-}
 
 let users: User[] = [
   {
